@@ -1,6 +1,7 @@
 from numpy import *
 import os
 import glob
+from collections import OrderedDict
 
 def scale_flux(rad_m,eff,mag,exptime_s):
     """
@@ -69,6 +70,26 @@ def get_data(teff,grav,qfiles,ffiles):
     qdat = load(aa[1])[()]
     fdat = load(aa[2])[()]
     return(qdat,fdat)
+
+def index_qs(directory='./output/'):
+    files = glob.glob(os.path.join(directory,'*.npy'))
+    oo1 = OrderedDict()
+    for fi in files:
+        tmpin = load(fi)
+        tmp = tmpin[()]
+        oo1[fi] = OrderedDict({'teff':tmp['teff'],'grav':tmp['grav']})
+        del tmpin
+    return oo1
+
+def index_fs(directory='./output_fluxes/'):
+    files = glob.glob(os.path.join(directory,'*.npy'))
+    oo1 = OrderedDict()
+    for fi in files:
+        tmpin = load(fi)
+        tmp = tmpin[()]
+        oo1[fi] = OrderedDict({'teff':tmp['teff'],'grav':tmp['grav']})
+        del tmpin
+    return oo1
 
 
 def calc_prec(qdat, fdat, wl1, wl2, resol, vsini_kms, rad_m, eff=0.1, mag=10, magtype='johnson,v',
