@@ -93,7 +93,8 @@ def index_fs(directory='./output_fluxes/'):
 
 
 def calc_prec(qdat, fdat, wl1, wl2, resol, vsini_kms, rad_m, eff=0.1, mag=10, magtype='johnson,v',
-              exptime_s=900, tell=0, mask_factor=0.1, sampling_pix_per_resel=5., beam_height_pix=5., rdn_pix=4.):
+              exptime_s=900, tell=0, mask_factor=0.1, sampling_pix_per_resel=5., beam_height_pix=5., rdn_pix=4.,
+              effmod=None,HPF_custom=False,HPF_orderflag=None):
     """
     Calculate the shot+read noise limited achievable RV precision based on a set of pre-computed tables
     of quality factor (Bouchy+2001) and fluxes from BT-SETTL model spectra
@@ -119,6 +120,10 @@ def calc_prec(qdat, fdat, wl1, wl2, resol, vsini_kms, rad_m, eff=0.1, mag=10, ma
     :param sampling_pix_per_resel: sampling of resolution element in pixels (used to estimate total # pixels for read noise)
     :param beam_height_pix: height of beam on detector in pixels (estimate # of pixels for read noise)
     :param rdn_pix: read noise for a single pixel
+    :param effmod: dict with wl (wavelength in ang) and tr (transmission) values. Supersedes eff
+    :param HPF_custom: Boolean, uses the separate fluxes calculated for HPF efficiencies + blaze
+    :param HPF_orderflag: OrderedDict of Booleans, supersedes wl1/wl2 and selects which orders contribute to total.
+    indexed by chunk_lower_lims as is the qdat['q_dict']
     :return: dict with q, f, snr, rv precision for each chunk, as well as overall
     """
 
@@ -165,10 +170,44 @@ def calc_prec(qdat, fdat, wl1, wl2, resol, vsini_kms, rad_m, eff=0.1, mag=10, ma
     dv_photon_out = []
     sns_photon_out = []
 
+    printed_effscl = False
+
+    if HPF_custom:
+        print('Warning! Efficiency for HPF (incl blaze, around 2% overall) is pre-included. Eff param is a further adjustment on this.')
+
+    if HPF_orderflag is not None:
+        print('Warning! Using order flags instead of wl lims')
+        wl_i1 = 0
+        wl_i2 = 27
+
     # loop over chunks of interest
-    for wl_this in wls_q[wl_i1:wl_i2]:
+   # print(wl_i1,wl_i2)
+
+
+    if HPF_orderflag is not None:
+        wl_iter = []
+        for kki in arange(len(HPF_orderflag.keys())):
+            kk = HPF_orderflag.keys()[kki]
+            if HPF_orderflag[kk]:
+                wl_iter.append(kki)
+    else:
+        # if grid iterates by order number instead of increasing wavelength, inds count *down*
+        if wl_i1 > wl_i2:
+            chg = -1
+        else:
+            chg = 1
+        wl_iter = arange(wl_i1,wl_i2,chg)
+
+    for wl_i in wl_iter: #arange(wl_i1,wl_i2,chg):
+        wl_this = wls_q[wl_i]
+        if HPF_orderflag is not None:
+            print('including ',wl_this)
         q1 = qdat['q_dict'][resol_use][vsini_use][tell_use][wl_this] # look up Q
-        f1 = fdat['photlam_0'][magtype][wl_this] * scf # look up and scale flux
+        if HPF_custom:
+            f1 = fdat['photlam_hpf_0'][magtype][wl_this] * scf  # look up and scale flux
+        else:
+            f1 = fdat['photlam_0'][magtype][wl_this] * scf # look up and scale flux
+        #print(q1,f1)
 
         # figure out number of pixels and read noise
         # how big is a resolution element in pixels?
@@ -179,6 +218,20 @@ def calc_prec(qdat, fdat, wl1, wl2, resol, vsini_kms, rad_m, eff=0.1, mag=10, ma
         n_pix_horiz = n_resels * sampling_pix_per_resel
         # multiply by "height" of beam, assume rectangular beam
         n_pix_tot = n_pix_horiz * beam_height_pix
+
+        # calculate the mean efficiency for this chunk IF effmod is invoked
+        if effmod is not None:
+            wlmod = effmod['wl']
+            trmod = effmod['tr']
+            chunklow = qdat['chunk_lower_lims'][wl_i]
+            chunkhigh = qdat['chunk_upper_lims'][wl_i]
+            iimod = nonzero( (wlmod > chunklow) & (wlmod < chunkhigh) )
+            eff_adjusted = mean(trmod[iimod])
+            eff_mult = eff_adjusted / eff
+            f1 = f1 * eff_mult
+            if not printed_effscl:
+                print('USING EFF SCALING')
+                printed_effscl = True
 
         # shot noise
         sn_photon = sqrt(f1)
