@@ -51,11 +51,11 @@ def do_we_have(teff,grav,qfiles,ffiles):
     for kk in qfiles.keys():
         if (qfiles[kk]['teff'] == teff) and (qfiles[kk]['grav'] == grav):
             for jj in ffiles.keys():
-                if (qfiles[kk]['teff'] == teff) and (qfiles[kk]['grav'] == grav):
+                if (ffiles[jj]['teff'] == teff) and (ffiles[jj]['grav'] == grav):
                     return(True,kk,jj)
     return(False,nan,nan)
 
-def get_data(teff,grav,qfiles,ffiles):
+def get_data(teff,grav,qfiles,ffiles,diag=False):
     """
     Download data if it exists
     :param teff: effective temp of atmosphere model spectrum in K
@@ -69,6 +69,8 @@ def get_data(teff,grav,qfiles,ffiles):
         raise ValueError('No file for this teff/grav')
     qdat = load(aa[1])[()]
     fdat = load(aa[2])[()]
+    if diag:
+        print(aa)
     return(qdat,fdat)
 
 def index_qs(directory='./output/'):
