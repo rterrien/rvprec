@@ -96,7 +96,7 @@ def index_fs(directory='./output_fluxes/'):
 
 def calc_prec(qdat, fdat, wl1, wl2, resol, vsini_kms, rad_m, eff=0.1, mag=10, magtype='johnson,v',
               exptime_s=900, tell=0, mask_factor=0.1, sampling_pix_per_resel=5., beam_height_pix=5., rdn_pix=4.,
-              effmod=None,HPF_custom=False,HPF_orderflag=None):
+              effmod=None,HPF_custom=False,NEID_custom=False,HPF_orderflag=None):
     """
     Calculate the shot+read noise limited achievable RV precision based on a set of pre-computed tables
     of quality factor (Bouchy+2001) and fluxes from BT-SETTL model spectra
@@ -177,6 +177,9 @@ def calc_prec(qdat, fdat, wl1, wl2, resol, vsini_kms, rad_m, eff=0.1, mag=10, ma
     if HPF_custom:
         print('Warning! Efficiency for HPF (incl blaze, around 2% overall) is pre-included. Eff param is a further adjustment on this.')
 
+    if NEID_custom:
+        print('Warning! Efficiency for NEID is pre-included. Eff param is a further adjustment on this.')
+
     if HPF_orderflag is not None:
         print('Warning! Using order flags instead of wl lims')
         wl_i1 = 0
@@ -207,6 +210,8 @@ def calc_prec(qdat, fdat, wl1, wl2, resol, vsini_kms, rad_m, eff=0.1, mag=10, ma
         q1 = qdat['q_dict'][resol_use][vsini_use][tell_use][wl_this] # look up Q
         if HPF_custom:
             f1 = fdat['photlam_hpf_0'][magtype][wl_this] * scf  # look up and scale flux
+        elif NEID_custom:
+            f1 = fdat['photlam_neid_0'][magtype][wl_this] * scf  # look up and scale flux
         else:
             f1 = fdat['photlam_0'][magtype][wl_this] * scf # look up and scale flux
         #print(q1,f1)
